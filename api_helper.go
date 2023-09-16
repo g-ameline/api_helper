@@ -47,11 +47,35 @@ func Get_data_from_request[data_type any](request *http.Request) (data_type, err
 	err := decoder.Decode(&data)
 	return data, err
 }
+func Get_data_from_response[data_type any](request *http.Response) (data_type, error) {
+	decoder := json.NewDecoder(request.Body)
+	var data data_type
+	err := decoder.Decode(&data)
+	return data, err
+}
 func Get_cookie_data_from_request(request *http.Request, cookie_name string) (map[string]string, error) {
 	cookie_struct, err := request.Cookie(cookie_name)
 	cookie_map := map[string]string{}
 	cookie_map["Name"] = cookie_struct.Name
 	cookie_map["Value"] = cookie_struct.Value
+	return cookie_map, err
+}
+
+func Get_cookie_data_from_response(response *http.Response, cookie_name string) (cookie_map map[string]string, err error) {
+	cookies := response.Cookies()
+	if len(cookies) == 0 {
+		return
+	}
+	cookie_map = map[string]string{}
+	for _, cookie := range cookies {
+		if cookie.Name == cookie_name {
+			cookie_map["Name"] = cookie.Name
+			cookie_map["Value"] = cookie.Value
+		}
+	}
+	if len(cookie_map) == 0 {
+		return cookie_map, fmt.Errorf("did not find named cookie")
+	}
 	return cookie_map, err
 }
 
@@ -154,3 +178,53 @@ func decide_on_response(response *http.Response) (err error) {
 	}
 	return err
 }
+func Post_all_kind_of_data(client *http.Client, url string, data map[string]io.Reader) (response *http.Response, err error) {
+	// Prepare a form that you will submit to that URL.
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	for key, r := range data {
+		var fw io.Writer
+		if x, ok := r.(io.Closer); ok {
+			defer x.Close()
+		}
+		// Add an image file
+		if x, ok := r.(*os.File); ok {
+			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
+				return response, err
+			}
+		} else {
+			// Add other fields
+			if fw, err = w.CreateFormField(key); err != nil {
+				return response, err
+			}
+		}
+		if _, err = io.Copy(fw, r); err != nil {
+			return response, err
+		}
+
+	}
+	// If you don't close it, your request will be missing the terminating boundary.
+	w.Close()
+	// Now that you have a form, you can submit it to your handler.
+	request, err := http.NewRequest("POST", url, &b)
+	if err != nil {
+		return
+	}
+	// Don't forget to set the content type, this will contain the boundary.
+	request.Header.Set("Content-Type", w.FormDataContentType())
+	// Submit the request
+	return client.Do(request)
+}
+
+// type R interface {
+// 	*http.Request | *http.Response
+// }
+
+// type R interface {
+// 	what() bool
+// // 	// Header  http.Header
+// // 	// Body io.ReadCloser
+// // 	// ContentLength int64
+// 	Close() bool
+// // 	// Cookie(string)(*http.Cookie,error)
+// }
