@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const content_type_json = "application/json"
@@ -23,6 +24,51 @@ func Post_data_to_url[data_type any](a_url string, data data_type) (response *ht
 	response, err = http.Post(a_url, content_type_json, data_reader)
 	return response, err
 }
+
+func new_request(method, a_url string, body_reader io.Reader) (*http.Request, error) {
+	return http.NewRequest(method, a_url, body_reader)
+}
+func Fresh_request(method, a_url string) *http.Request {
+	return new(http.Request)
+}
+
+func Add_method(request *http.Request, method string) {
+	request.Method = method
+}
+func Add_url(request *http.Request, a_url string) (err error) {
+	request.URL, err = url.Parse(a_url)
+	return err
+}
+func Add_cookie(request *http.Request, name, value string) {
+	cookie := &http.Cookie{Name: name, Value: value}
+	request.AddCookie(cookie)
+}
+func Add_data(request *http.Request) {
+
+}
+
+func PostForm_data_with_cookie_to_url(a_url string, data map[string]any, cookie_data map[string]string) (response *http.Response, err error) {
+	post_form := url.Values{}
+	for key, value := range data {
+		switch value.(type) {
+		case string:
+			post_form.Set(key, value.(string))
+		case []string:
+			post_form[key] = value.([]string)
+		default:
+			err = fmt.Errorf(fmt.Sprintf("need string or []string but got type %T", value))
+		}
+	}
+	if err != nil {
+		return response, err
+	}
+	data_reader := strings.NewReader(post_form.Encode())
+	request, err := http.NewRequest(http.MethodPost, a_url, data_reader)
+	Add_cookie(request, cookie_data["Name"], cookie_data["Value"])
+	client := &http.Client{}
+	return client.Do(request)
+}
+
 func PostForm_data_to_url(a_url string, data map[string]any) (response *http.Response, err error) {
 	post_form := url.Values{}
 	for key, value := range data {
@@ -52,6 +98,15 @@ func Get_data_from_response[data_type any](request *http.Response) (data_type, e
 	var data data_type
 	err := decoder.Decode(&data)
 	return data, err
+}
+
+func Set_cookie_into_response(writer http.ResponseWriter, name, value string) {
+	cookie := http.Cookie{
+		Name:     name,
+		Value:    value,
+		SameSite: http.SameSiteDefaultMode,
+	}
+	http.SetCookie(writer, &cookie)
 }
 func Get_cookie_data_from_request(request *http.Request, cookie_name string) (map[string]string, error) {
 	cookie_struct, err := request.Cookie(cookie_name)
