@@ -340,7 +340,7 @@ func Post_data_and_files(a_url string, data map[string]any, files map[string]mul
 	// defer response.Body.Close()
 	return http.DefaultClient.Do(request)
 }
-func Get_data_from_request(responder http.ResponseWriter, request *http.Request) (data map[string]any, err error) {
+func Get_data_from_request(request *http.Request) (data map[string]any, err error) {
 	data = map[string]any{}
 	fmt.Println("content type ", request.Header.Get("content-type"))
 	only_content_type := strings.Split(request.Header.Get("Content-Type"), ";")[0]
