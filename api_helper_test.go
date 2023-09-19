@@ -32,6 +32,7 @@ func Test(t *testing.T) {
 	server.HandleFunc(root+"a_file", check_if_file)
 	server.HandleFunc(root+"multipart", print_data_from_request_multipart)
 	server.HandleFunc(root+"data_files", print_data_and_files_from_request_multipart)
+	server.HandleFunc(root+"respond_json", respond_json)
 
 	// next we send stuff to the server
 
@@ -127,6 +128,10 @@ func Test(t *testing.T) {
 	fmt.Println("response from sending file", response.StatusCode)
 	print_response_body(response)
 	fmt.Println("error", err)
+	println("\nget json response from server")
+	response, err = Post_json_data_to_url(home_url+"respond_json", new_data)
+	fmt.Println("response from sending file", response.StatusCode)
+	print_response_body(response)
 
 }
 func print_response_body(response *http.Response) {
@@ -210,4 +215,10 @@ func check_if_file(responder http.ResponseWriter, request *http.Request) {
 	fmt.Printf("of type %T\n", data)
 	fmt.Println("the error", err)
 	responder.Write([]byte("putain merde"))
+}
+func respond_json(responder http.ResponseWriter, request *http.Request) {
+	data := map[string]string{}
+	data["truc"] = "chose"
+	data["bidule"] = "machin"
+	Respond_with_json_data(responder, data)
 }

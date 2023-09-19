@@ -48,6 +48,15 @@ func Post_json_data_to_url[data_type any](a_url string, data data_type) (respons
 	response, err = http.Post(a_url, content_type_json, data_reader)
 	return response, err
 }
+func Respond_json_data[data_type any](responder http.ResponseWriter, data data_type) (err error) {
+	data_json, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	responder.Header().Set("Content-Type", "application/json")
+	_, err = responder.Write(data_json)
+	return err
+}
 func Post_form_data_to_url(a_url string, data map[string]any) (response *http.Response, err error) {
 	post_form := url.Values{}
 	for key, value := range data {
@@ -330,7 +339,6 @@ func Post_data_and_files(a_url string, data map[string]any, files map[string]mul
 		if err != nil {
 			return response, err
 		}
-
 	}
 	// If you don't close it, your request will be missing the terminating boundary.
 	err = writer.Close()
@@ -342,18 +350,27 @@ func Post_data_and_files(a_url string, data map[string]any, files map[string]mul
 }
 func Get_data_from_request(request *http.Request) (data map[string]any, err error) {
 	data = map[string]any{}
-	fmt.Println("content type ", request.Header.Get("content-type"))
+	// fmt.Println("content type ", request.Header.Get("content-type"))
 	only_content_type := strings.Split(request.Header.Get("Content-Type"), ";")[0]
 	switch only_content_type {
 	case content_type_json:
 		data, err = Get_data_from_request_json[map[string]any](request)
-		fmt.Println("body", data, err)
+		// fmt.Println("body", data, err)
 	case content_type_form:
 		data, err = Get_data_from_request_form(request)
-		fmt.Println("post form", data, err)
+		// fmt.Println("post form", data, err)
 	case content_type_multipart:
 		data, data["files"], err = Get_data_and_files_from_request_multipart(request)
-		fmt.Println("multipart", data, err)
+		// fmt.Println("multipart", data, err)
 	}
 	return data, err
+}
+func Respond_with_json_data[data_type any](responder http.ResponseWriter, data data_type) (err error) {
+	data_json, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	responder.Header().Set("Content-Type", content_type_json)
+	_, err = responder.Write(data_json)
+	return err
 }
